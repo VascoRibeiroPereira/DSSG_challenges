@@ -1,0 +1,119 @@
+---
+title: "Seca em Portugal"
+author: "Vasco Pereira"
+date: "2022.03.26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Bibliotecas
+
+```{r bibliotecas}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(lubridate)
+```
+
+## Dados
+
+A obtenção dos dados foi efectuada através do GitHub da [DSSG Portugal](https://github.com/dssgPT) 
+
+```{r download}
+## Code commented, uncomment only for the first run
+# water_data_url <- "https://github.com/dssgPT/Plotting-Good-DSSG/blob/main/desafios/001_Seca_Em_Portugal_SNIRH/snirh_clean.csv?raw=true"
+# download.file(water_data_url, "droughts/files/water_data.csv")
+```
+
+### Exploração dos dados
+
+```{r lerdados}
+water_data <- read_csv("../files/water_data.csv")
+str(water_data)
+```
+
+Pelo que se consegue observar pode-se eliminar a primeira coluna pois não tem informação útil; a `data` está correctamente formatada e pelo dicionário de dados fornecido pela dssgPT trata-se de uma data arredondada ao primeiro dia de cada mês, pelo que se pode considerar apenas o mês e ano; também pelo dicionário de dados observa-se dois tipos de medida: metros cúbicos ou percentagem quanto à coluna `medida`, no entanto o `resumo_infraestrutura` é suposto ser numérico pelo que terá de ser convertido. 
+
+A coluna `nome_infraestrutura` apresenta-se desta forma: 
+
+`r unique(water_data$nome_infraestrutura)[10:15]`
+
+Para bem da uniformidade todos os nomes serão convertidos para maíusculas. Para terminar a coluna `tipo_infraestrutura` explicita se se trata de uma bacia ou albufeira.
+
+### Filtragem e conversão numérica
+
+Decidiu-se filtrar os dados por **percentagem**; as restantes alterações acima mencionadas foram aplicadas para a nova tabela `water_percent`. Ao transformar-se a quantidade percentual de água nalgumas linhas geraram-se NA, pelo que estas linhas foram eliminadas da tabela.
+
+Primeiras 10 linhas da tabela `water_percent`:
+
+```{r filtrar}
+water_percent <- water_data[,-1] %>% 
+  filter(medida == "percentagem") %>%
+  mutate(nome_infraestrutura = toupper(nome_infraestrutura), 
+         resumo_infraestrutura = as.numeric(resumo_infraestrutura)) %>% 
+  na.omit()
+
+knitr::kable(head(water_percent, 10))
+```
+
+## Determinação da variação
+
+Assumindo que periodos de seca extrema acompanhados de excessiva precipitação são mais prejudiciais para as rotinas agrículas e para a disponíbilidade de água para pessoas e animais de uma localização geográfica, neste caso Portugal, determinaram-se quais as doze albufeiras/bacias que apresentam maior variabilidade de disponibilidade de água ao longo do anos em que os dados foram obtidos:
+
+```{r variacao}
+varWater <- water_percent %>% 
+  mutate(ano = year(data)) %>% 
+  group_by(ano, nome_infraestrutura) %>% 
+  summarise(media = mean(resumo_infraestrutura)) %>% 
+  group_by(nome_infraestrutura) %>%
+  summarise(variacao = var(media)) %>% 
+  arrange(desc(variacao))
+
+mySearch <- head(varWater$nome_infraestrutura,12)
+print(mySearch)
+```
+
+## Média Percentual por Ano
+
+A tabela `water_percent` foi filtrada para conter apenas dados das albufeiras/bacias anteriormente descritas. Adicionalmente realizou-se uma média anual. Nomeou-se a nova tabela de `water_subset`.
+
+Primeiras 10 linhas da tabela `water_subset`:
+
+```{r mediaporano}
+water_subset <- water_percent %>% filter(nome_infraestrutura %in% mySearch) %>% 
+  mutate(ano = year(data)) %>% 
+  group_by(ano, nome_infraestrutura) %>% 
+  summarise(media = mean(resumo_infraestrutura))
+
+knitr::kable(head(water_subset, 10))
+```
+
+## Representação Gráfica
+
+Representa-se graficamente as médias das percentagens de água nas Albufeiras/Bacias com maior variabilidade.
+Destacam-se fortes tendencias de diminuição média de água nas albufeiras de Bravura, Minutos, Monte da Rocha e na bacia de Ribeiras do Algarve.
+
+```{r gráfico}
+average_plot <- water_subset %>% ggplot(aes(ano, media)) + 
+  geom_point() + 
+  stat_density2d(aes(color = ..level..)) + 
+  facet_wrap(vars(nome_infraestrutura)) + 
+  labs(title = "Bacias/Albufeiras com maior variabilidade percentual na quantidade\n de água armazenada entre 1999 e 2022",
+       subtitle = "Destacam-se fortes tendencias de diminuição média de água nas albufeiras de Bravura,\n Minutos, Monte da Rocha e na bacia de Ribeiras do Algarve.",
+       caption = "Fonte: SNIRH (dados tratados por Vasco Ribeiro Pereira)") + 
+  xlab("Ano") + ylab("%Água") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(size = 10),
+        plot.caption = element_text(color = "grey50", face = "italic"),
+        legend.position="none")
+
+png(filename = "../files/secaportugal.png")
+average_plot
+dev.off()
+
+print(average_plot)
+
+```
