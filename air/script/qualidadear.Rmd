@@ -1,0 +1,98 @@
+---
+title: "Qualidade do ar em Portugal"
+author: "Vasco Pereira"
+date: "2022.04.21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Bibliotecas
+
+```{r bibliotecas}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(lubridate)
+library(rworldmap)
+library(sf)
+library(gganimate)
+library(gifski)
+```
+
+## Dados
+
+A obtenção dos dados foi efectuada através do GitHub da [DSSG Portugal](https://github.com/dssgPT) 
+
+```{r download}
+## Code commented, uncomment only for the first run
+# air_data_url <- "https://github.com/dssgPT/Plotting-Good-DSSG/blob/main/desafios/002_Qualidade_do_Ar_em_Portugal_EEA/qualidade_do_ar.csv?raw=true"
+# download.file(air_data_url, "air/files/air_data.csv")
+```
+
+### Exploração dos dados
+
+```{r lerdados}
+air_data <- read_csv("../files/air_data.csv")
+str(air_data)
+```
+
+Seria interessante visualizar uma evolução anual da poluição no país. Para tal produziu-se um mapa e utilizaram-se as coordenadas das cidades onde as medições foram feitas para apresentar visualmente a concentração de cada um dos 5 poluentes entre 2012 e 2022.
+
+
+```{r dataprep}
+
+pol_evol = air_data %>% 
+  filter(metrica == "Média anual", cidade != "Funchal", cidade != "NA", ano >= 2012) %>% 
+  group_by(cidade, longitude, latitude, poluente, metrica, nível_de_poluicao, ano) %>% 
+  summarise() %>% 
+  group_by(poluente, cidade, ano) %>% 
+  mutate(longitude = mean(longitude), latitude = mean(latitude), nível_de_poluicao = mean(nível_de_poluicao)) %>% 
+  remove_missing() %>% 
+  distinct()
+```
+
+```{r map}
+# get map
+portugal <- getMap(resolution = "low")
+
+# transform map for use in ggplot
+pt_points = fortify(portugal)
+pt_points = pt_points %>% filter(group == "Portugal.1")
+pt_points$region <- pt_points$id
+pt_df <- pt_points[,c("long","lat","group", "region")]
+
+# plot data on world map
+pt_map <- ggplot() + 
+  geom_polygon(data = pt_df, aes(x = long, y = lat, group = group)) +
+  scale_y_continuous(breaks = (-2:2) * 30) +
+  scale_x_continuous(breaks = (-4:4) * 45) + 
+  facet_wrap(~poluente, scales="fixed", shrink = FALSE) +
+  geom_point(data = pol_evol, aes(size = nível_de_poluicao, x=longitude, y=latitude, colour=poluente), alpha = 0.7) +
+  guides(colour = "none", size=guide_legend(title="Cocentração")) +
+  ggtitle("Concentração de poluentes em Portugal nos últimos 10 anos",
+          subtitle = "Ano: {frame_time}") +
+    labs(caption = "Fonte: EEA (dados tratados por Vasco Ribeiro Pereira)") +
+  transition_time(as.integer(ano)) +
+  ease_aes("linear") +
+  theme(legend.position = c(1, 0.15), 
+        legend.justification = c(1.25, 0.15),
+        plot.title = element_text(color="cornsilk4", size=14, face="bold.italic"),
+        legend.key.size = unit(.5, 'cm'),
+        plot.subtitle = element_text(color="chocolate4", size=11),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+pol_anim = animate(pt_map, nframes = 11, fps = 1, renderer = gifski_renderer(width = 410, height = 580))
+
+anim_save("../files/portugal_polut.gif", pol_anim)
+
+```
+
+``` {r plot}
+
+pol_anim
+
+```
