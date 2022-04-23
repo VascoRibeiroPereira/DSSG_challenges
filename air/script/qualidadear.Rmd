@@ -20,6 +20,7 @@ library(rworldmap)
 library(sf)
 library(gganimate)
 library(gifski)
+library(RColorBrewer)
 ```
 
 ## Dados
@@ -96,3 +97,32 @@ anim_save("../files/portugal_polut.gif", pol_anim)
 pol_anim
 
 ```
+
+``` {r plot2}
+
+pol_anima = pol_evol
+pol_anima$ano = ymd(pol_anima$ano, truncated = 2L)
+
+line_anim = pol_anima %>% 
+  ggplot(aes(x=ano, y=nível_de_poluicao)) + 
+  facet_wrap(~poluente, scales = "free_y", shrink = FALSE) + 
+  geom_point(aes(group = seq_along(ano), color = cidade), # needed, otherwise transition dosen't work
+             size = 1, # size of points
+             alpha = 0.7) +
+  geom_line(aes(color = cidade), alpha = 0.7) +
+  scale_color_brewer(palette = "Set3") +
+  ggtitle("Concentração de poluentes em Portugal nos últimos 10 anos") +
+  labs(caption = "Fonte: EEA (dados tratados por Vasco Ribeiro Pereira)") +
+  scale_x_date(guide = guide_axis(n.dodge = 2)) +
+  theme_dark() +
+  transition_reveal(ano) +
+  ease_aes("linear")
+
+animate(line_anim, height = 800, width = 800)
+
+anim_save("../files/portugal_line.gif")
+
+line_anim
+
+```
+
