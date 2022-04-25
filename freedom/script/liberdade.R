@@ -131,7 +131,10 @@ roads_img = sorted_roads[1:20,] %>%
   geom_col(data=highlight_df, aes(pt_roads,ppm),color="red",fill=NA) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
   labs(x = "Rua") +
-  coord_flip()
+  coord_flip() + 
+  labs(title = "Bacias/Albufeiras com maior variabilidade percentual na quantidade\n de água armazenada entre 1999 e 2022",
+       subtitle = "Destacam-se fortes tendencias de diminuição média de água nas albufeiras de Bravura,\n Minutos, Monte da Rocha e na bacia de Ribeiras do Algarve.",
+       caption = "Fonte: SNIRH (dados tratados por Vasco Ribeiro Pereira)")
 
 png(filename = "freedom/files/freedom_roads.png", width = 680, height = 680, res = 150)
 roads_img
