@@ -9,6 +9,7 @@ library(RWeka)
 library(wordcloud2) 
 library(webshot)
 library(htmlwidgets)
+library(grid)
 
 # Twitter
 
@@ -120,22 +121,43 @@ webshot::webshot("freedom/files/tweets.html","freedom/files/tweets.png",vwidth =
 
 ## How important is freedom in Portugal?
 
+### Background Image
+
+# img.file <- system.file(file.path("freedom/files/", "lib.png"),
+#                         package = "ggpubr")
+img <- png::readPNG("freedom/files/lib.png")
+
+### Highlights
 highlight_df = inner_join(freedom_roads,sorted_roads[1:20,])
 
-roads_img = sorted_roads[1:20,] %>% 
+p = sorted_roads[1:20,] %>% 
   ggplot(aes(reorder(pt_roads, ppm), ppm)) + 
   geom_col(aes(fill = ppm)) + 
   scale_fill_gradient2(low = "darkblue", 
                        high = "darkgreen", 
                        midpoint = median(sorted_roads[1:20,]$ppm)) +
   geom_col(data=highlight_df, aes(pt_roads,ppm),color="red",fill=NA) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  theme(axis.text.x = element_text(angle = 0, size = 8, colour = "black"),
+        axis.text.y = element_text(colour = "black"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "grey"),
+        title = element_text(face = "bold", family = "Arial"),
+        plot.subtitle = element_text(face = "italic", family = "Arial"),
+        plot.caption = element_text(face = "italic", family = "Arial", colour = "grey"),
+        plot.background = element_rect(fill=NA),
+        legend.background = element_rect(fill=NA)) +
   labs(x = "Rua") +
   coord_flip() + 
-  labs(title = "Bacias/Albufeiras com maior variabilidade percentual na quantidade\n de água armazenada entre 1999 e 2022",
-       subtitle = "Destacam-se fortes tendencias de diminuição média de água nas albufeiras de Bravura,\n Minutos, Monte da Rocha e na bacia de Ribeiras do Algarve.",
-       caption = "Fonte: SNIRH (dados tratados por Vasco Ribeiro Pereira)")
+  labs(title = "Nomes de Ruas mais comuns em Portugal",
+       subtitle = "Assinalam-se os nomes de ruas referentes a liberdade e ao 25 de Abril",
+       caption = "Fonte: Open Street Map (dados tratados por Vasco Ribeiro Pereira)")
 
-png(filename = "freedom/files/freedom_roads.png", width = 680, height = 680, res = 150)
-roads_img
+grid.draw(gList(rasterGrob(img, width = unit(1,"npc"), height = unit(1,"npc")), 
+                ggplotGrob(p)))
+
+png(filename = "freedom/files/freedom_roads.png", width = 1080, height = 680, res = 150)
+grid.draw(gList(rasterGrob(img, width = unit(1,"npc"), height = unit(1,"npc")), 
+                ggplotGrob(p)))
 dev.off()
