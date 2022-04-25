@@ -63,9 +63,15 @@ d = d %>% filter(!(word %in% c("leões", "fcporto", "dia"))) ## remove footbal t
 # All PT road names
 #download.file(pt_url,"freedom/files/pt_raw") ## do not run more than once
 #unzip("freedom/files/pt_raw.zip") ## do not run more than once
-pt_roads_raw <- st_read("freedom/files/pt_raw/gis_osm_roads_free_1.shp")
-pt_roads <- pt_roads_raw$name
-pt_roads <- pt_roads[!is.na(pt_roads)] %>% tolower() # remove NA and remove uppers as a variable
+# pt_roads_raw <- st_read("freedom/files/pt_raw/gis_osm_roads_free_1.shp")
+# pt_roads <- pt_roads_raw$name
+# pt_roads <- pt_roads[!is.na(pt_roads)] %>% tolower() # remove NA and remove uppers as a variable
+
+# write(pt_roads, "freedom/files/pt_roads.csv")
+
+pt_roads = read_csv("freedom/files/pt_roads.csv", col_names = FALSE)
+
+pt_roads = pt_roads$X1
 
 sorted_roads = table(pt_roads) %>% as.data.frame() %>% arrange(desc(Freq)) %>% mutate(ppm = Freq/sum(Freq)*1000000) # sort from more frequent to least frequent with ‰
 
